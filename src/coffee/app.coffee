@@ -3,6 +3,7 @@ dropZone = document.getElementById('drop_zone')
 finder = document.getElementById('finder')
 outputTbody = document.getElementById('output')
 overdue = document.getElementById('overdue')
+header = document.getElementById('header')
 
 excels = []
 handleFileSelect = (evt) ->
@@ -53,15 +54,35 @@ loaded = ->
 
 find = ->
   tableRows = []
+  headers = excels[0].rows[3]
+  headers = (h.trim() for h in headers)
+  overdueName = overdue.value.trim()
+  overdueIndx = headers.indexOf overdueName
+  mrpIndx = headers.indexOf "MRP Elemen"
+
   for excel in excels
-    tableRows.push "<tr class='excel-name'><td colspan='3'>#{excel.name}</td></tr>"
-    headers = excel.rows[3]
-    overdueName = overdue.value.trim()
-    overdueIndx = headers.indexOf overdueName
-    mrpIndx = headers.indexOf "MRP Elemen"
+    tableRows.push "<tr class='excel-name'><td colspan='5'>#{excel.name}</td></tr>"
     for cells,rowIndx in excel.rows
       if cells[mrpIndx] is "Balance (S/N)" and cells[overdueIndx] < 0
-        tableRows.push "<tr><td>#{excel.rows[rowIndx-4][2]}</td><td>#{excel.rows[rowIndx-3][2]}</td><td>#{cells[overdueIndx]}</td></tr>"
+        tableRows.push """
+<tr>
+  <td>#{excel.rows[rowIndx-4][2]}</td>
+  <td>#{excel.rows[rowIndx-4][6]}</td>
+  <td class='negative'>#{cells[overdueIndx]}</td>
+  <td>#{cells[overdueIndx+1] ? ''}</td>
+  <td>#{cells[overdueIndx+2] ? ''}</td>
+</tr>
+"""
+
+
+  header.innerHTML = """
+<th>Material</th>
+<th>Vendor</th>
+<th class='negative'>#{overdueName}</th>
+<th>#{headers[overdueIndx+1] ? ''}</th>
+<th>#{headers[overdueIndx+2] ? ''}</th>
+  """
+
   outputTbody.innerHTML = tableRows.join("")
 
 handleDragOver = (evt) ->
