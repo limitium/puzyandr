@@ -3,9 +3,12 @@ dropZone = document.getElementById('drop_zone')
 finder = document.getElementById('finder')
 outputTbody = document.getElementById('output')
 overdue = document.getElementById('overdue')
+vendor = document.getElementById('vendor')
 header = document.getElementById('header')
 
-excels = []
+excel = null
+materials = []
+
 handleFileSelect = (evt) ->
   evt.stopPropagation()
   evt.preventDefault()
@@ -14,18 +17,14 @@ handleFileSelect = (evt) ->
   # FileList object.
   # files is a FileList of File objects. List some properties.
   output = []
-  excels.length = 0
   outputTbody.innerHTML = ""
-  totalFiles = files.length
-  totalLoaded = 0
   for file in files
     reader = new FileReader
     # Closure to capture the file information.
     reader.onload = ((theFile) ->
       (e) ->
-        totalLoaded++
-        excels.push excelToJSON(theFile.name, e.target.result)
-        loaded() if totalFiles == totalLoaded
+        excel = excelToJSON(theFile.name, e.target.result)
+        loaded()
     )(file)
     # Read in the image file as a data URL.
     reader.readAsText file
@@ -44,37 +43,18 @@ excelToJSON = (name, excel)->
 
 loaded = ->
   allWeeks = []
-  for excel in excels
-    headers = excel.rows[3]
-    allWeeks.push(week) for week in headers[headers.indexOf("Overdue")+1..] when week not in allWeeks
+  headers = excel.rows[3]
+  allWeeks.push(week) for week in headers[headers.indexOf("Overdue")+1..] when week not in allWeeks
   allWeeks.sort (w1,w2)-> w1 >= w2 ? 1 : -1
 
   overdue.innerHTML = "<option>"+allWeeks.join("</option><option>")+"</option>"
   find()
 
 find = ->
-  tableRows = []
-  headers = excels[0].rows[3]
+  headers = excel.rows[3]
   headers = (h.trim() for h in headers)
   overdueName = overdue.value.trim()
   overdueIndx = headers.indexOf overdueName
-  mrpIndx = headers.indexOf "MRP Elemen"
-
-  for excel in excels
-    tableRows.push "<tr class='excel-name'><td colspan='5'>#{excel.name}</td></tr>"
-    for cells,rowIndx in excel.rows
-      if cells[mrpIndx] is "Balance (S/N)" and cells[overdueIndx] < 0
-        tableRows.push """
-<tr>
-  <td>#{excel.rows[rowIndx-4][2]}</td>
-  <td>#{excel.rows[rowIndx-4][6]}</td>
-  <td class='negative'>#{cells[overdueIndx]}</td>
-  <td>#{cells[overdueIndx+1] ? ''}</td>
-  <td>#{cells[overdueIndx+2] ? ''}</td>
-</tr>
-"""
-
-
   header.innerHTML = """
 <th>Material</th>
 <th>Vendor</th>
@@ -83,7 +63,57 @@ find = ->
 <th>#{headers[overdueIndx+2] ? ''}</th>
   """
 
+  materials.length = 0
+  mrpIndx = headers.indexOf "MRP Elemen"
+  vendors = []
+  for cells,rowIndx in excel.rows when cells[mrpIndx] is "Balance (S/N)" and cells[overdueIndx] < 0
+    materialVendors = findVendors excel.rows, rowIndx-4, mrpIndx
+    vendors.push v for v in materialVendors when vendors.indexOf(v) is -1
+
+    materials.push
+      name: excel.rows[rowIndx-4][2]
+      vendors: materialVendors
+      qty: cells[overdueIndx]
+      qtyw1: cells[overdueIndx+1] ? ''
+      qtyw2: cells[overdueIndx+2] ? ''
+
+  vendor.innerHTML = "<option></option><option>"+vendors.join("</option><option>")+"</option>"
+  vendor.value=''
+  filter()
+
+findVendors = (rows, from, mrpIndx)->
+  end = rows.length
+  end = from + 6 if rows?[from+6]?[mrpIndx] is 'Requirements'
+  end = from + 8 if rows?[from+8]?[mrpIndx] is 'Requirements'
+  vendors = []
+  for rowInd in [from...end]
+    if rows?[rowInd]?[6]?.trim() isnt ''
+      if !skip
+        vendors.push rows[rowInd][6]
+        skip = true
+      else
+        skip = false
+  vendors
+filter = ->
+  vendorName = vendor.value.trim()
+  filtered = materials
+  if vendorName isnt ''
+    filtered = materials.filter (r)->
+      r.vendors.indexOf(vendorName) isnt -1
+
+  tableRows=[]
+  for material in filtered
+    tableRows.push """
+<tr>
+  <td>#{material.name}</td>
+  <td>#{material.vendors.join(',')}</td>
+  <td class='negative'>#{material.qty}</td>
+  <td>#{material.qtyw1}</td>
+  <td>#{material.qtyw2}</td>
+</tr>
+"""
   outputTbody.innerHTML = tableRows.join("")
+
 
 handleDragOver = (evt) ->
   evt.stopPropagation()
@@ -100,3 +130,4 @@ dropZone.addEventListener 'dragover', handleDragOver, false
 dropZone.addEventListener 'dragleave', handleDragLeave, false
 dropZone.addEventListener 'drop', handleFileSelect, false
 overdue.addEventListener 'change', find, false
+vendor.addEventListener 'change', filter, false
