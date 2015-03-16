@@ -8,6 +8,7 @@ header = document.getElementById('header')
 
 excel = null
 materials = []
+isModels = false
 
 handleFileSelect = (evt) ->
   evt.stopPropagation()
@@ -23,9 +24,9 @@ handleFileSelect = (evt) ->
     # Closure to capture the file information.
     reader.onload = ((theFile) ->
       (e) ->
+        isModels = theFile.name.trim().toLocaleLowerCase().indexOf('models') != -1
         excel = excelToJSON(theFile.name, e.target.result)
-        loaded()
-    )(file)
+        loaded())(file)
     # Read in the image file as a data URL.
     reader.readAsText file
     output.push '<li><strong>', escape(file.name), '</strong></li>'
@@ -44,10 +45,10 @@ excelToJSON = (name, excel)->
 loaded = ->
   allWeeks = []
   headers = excel.rows[3]
-  allWeeks.push(week) for week in headers[headers.indexOf("Overdue")+1..] when week not in allWeeks
-  allWeeks.sort (w1,w2)-> w1 >= w2 ? 1 : -1
+  allWeeks.push(week) for week in headers[headers.indexOf("Overdue") + 1..] when week not in allWeeks
+  allWeeks.sort (w1, w2)-> w1 >= w2 ? 1: -1
 
-  overdue.innerHTML = "<option>"+allWeeks.join("</option><option>")+"</option>"
+  overdue.innerHTML = "<option>" + allWeeks.join("</option><option>") + "</option>"
   find()
 
 find = ->
@@ -67,24 +68,29 @@ find = ->
   mrpIndx = headers.indexOf "MRP Elemen"
   vendors = []
   for cells,rowIndx in excel.rows when cells[mrpIndx] is "Balance (S/N)" and cells[overdueIndx] < 0
-    materialVendors = findVendors excel.rows, rowIndx-4, mrpIndx
+    materialVendors = findVendors excel.rows, rowIndx - 4, mrpIndx
+    materialProducts = findProducts excel.rows, rowIndx - 4, mrpIndx, overdueIndx
+
+    console.log excel.rows[rowIndx - 4][2]
+    console.log materialProducts
     vendors.push v for v in materialVendors when vendors.indexOf(v) is -1
 
     materials.push
-      name: excel.rows[rowIndx-4][2]
+      name: excel.rows[rowIndx - 4][2]
       vendors: materialVendors
-      qty: cells[overdueIndx]
-      qtyw1: cells[overdueIndx+1] ? ''
-      qtyw2: cells[overdueIndx+2] ? ''
+      products: materialProducts
+      qty: parseInt(cells[overdueIndx].replace(/\s/g,''))
+      qtyw1: cells[overdueIndx + 1] ? ''
+      qtyw2: cells[overdueIndx + 2] ? ''
 
-  vendor.innerHTML = "<option></option><option>"+vendors.join("</option><option>")+"</option>"
-  vendor.value=''
-  filter()
+  vendor.innerHTML = "<option></option><option>" + vendors.join("</option><option>") + "</option>"
+  vendor.value = ''
+  if isModels then findModels(overdueName) else filter()
 
 findVendors = (rows, from, mrpIndx)->
   end = rows.length
-  end = from + 6 if rows?[from+6]?[mrpIndx] is 'Requirements'
-  end = from + 8 if rows?[from+8]?[mrpIndx] is 'Requirements'
+  end = from + 6 if rows?[from + 6]?[mrpIndx] is 'Requirements'
+  end = from + 8 if rows?[from + 8]?[mrpIndx] is 'Requirements'
   vendors = []
   for rowInd in [from...end]
     if rows?[rowInd]?[6]?.trim() isnt ''
@@ -94,6 +100,24 @@ findVendors = (rows, from, mrpIndx)->
       else
         skip = false
   vendors
+
+findProducts = (rows, start, mrpIndx, overdueIndx)->
+  from = start + 6
+  end = from
+  endFind = false
+
+  while !endFind and end != rows.length
+    if rows?[end + 1][mrpIndx] is 'Requirements'
+      endFind = true
+    else
+      end++
+  end--
+
+  products = (name: rows[rowInd][mrpIndx].trim(), qty: parseInt(rows[rowInd][overdueIndx].replace(/\s/g,'')) for rowInd in [from...end])
+  products.sort (p1, p2) ->
+    p2.qty - p1.qty
+  products
+
 filter = ->
   vendorName = vendor.value.trim()
   filtered = materials
@@ -101,17 +125,59 @@ filter = ->
     filtered = materials.filter (r)->
       r.vendors.indexOf(vendorName) isnt -1
 
-  tableRows=[]
+  tableRows = []
   for material in filtered
     tableRows.push """
 <tr>
   <td>#{material.name}</td>
-  <td>#{material.vendors.join(',')}</td>
+  <td>#{material.vendors.join(', ')}</td>
   <td class='negative'>#{material.qty}</td>
   <td>#{material.qtyw1}</td>
   <td>#{material.qtyw2}</td>
 </tr>
 """
+  outputTbody.innerHTML = tableRows.join("")
+
+findModels = (overdueName) ->
+  header.innerHTML = """
+<th>Material</th>
+<th>Product</th>
+<th>Forecast</th>
+<th>Result</th>
+<th class='negative'>#{overdueName}</th>
+  """
+
+  tableRows = []
+  for material in materials
+    short = material.qty
+    productsRows = []
+    for product in material.products when short < 0 and product.qty > 0
+      qtyCanMade = product.qty + short
+      if qtyCanMade < 0
+        short = qtyCanMade
+        qtyCanMade = 0
+      else
+        short = 0
+
+      productsRows.push """
+    <tr>
+      <td></td>
+      <td>#{product.name}</td>
+      <td>#{product.qty}</td>
+      <td>#{qtyCanMade}</td>
+      <td></td>
+    </tr>
+    """
+    tableRows.push """
+  <tr class='#{'negative' if short <0}'>
+      <td>#{material.name}</td>
+      <td></td>
+      <td></td>
+      <td>#{short}</td>
+      <td class='negative'>#{material.qty}</td>
+    </tr>
+  """
+    tableRows.push row for row in productsRows
   outputTbody.innerHTML = tableRows.join("")
 
 
@@ -126,8 +192,11 @@ handleDragOver = (evt) ->
 handleDragLeave = (evt) ->
   dropZone.classList.remove 'over'
 
+fff =->
+  if isModels then findModels() else filter()
+
 dropZone.addEventListener 'dragover', handleDragOver, false
 dropZone.addEventListener 'dragleave', handleDragLeave, false
 dropZone.addEventListener 'drop', handleFileSelect, false
 overdue.addEventListener 'change', find, false
-vendor.addEventListener 'change', filter, false
+vendor.addEventListener 'change', fff, false
