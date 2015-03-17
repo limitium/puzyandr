@@ -33,13 +33,11 @@ class W13Builder
     doc = new W13Doc
     doc.weeks = @findWeeks excel
     doc.materials = @buildMaterials excel
-    console.log doc
     doc
 
   @findWeeks = (excel)->
     headers = excel.rows[3]
-    weeks = (week.trim() for week in headers[headers.indexOf("Overdue") + 1..])
-    weeks.sort (w1, w2)-> w1 >= w2 ? 1: -1
+    (week.trim() for week in headers[headers.indexOf("Overdue") + 1..])
 
   @buildMaterials = (excel)->
     headers = excel.rows[3]
@@ -149,6 +147,7 @@ filterByVendor = ->
   outputTbody.innerHTML = tableRows.join("")
 
 renderModels = (doc, overdueIndx)->
+  vendor.innerHTML = ""
   header.innerHTML = """
 <th>Material</th>
 <th>Product</th>
