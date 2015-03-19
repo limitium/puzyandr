@@ -23,7 +23,7 @@ class W13Material
     @vendors = []
     @blocked = []
     @balanceSN = []
-    @purOrder = []
+    @purOrder = null
 
 
 class W13Product
@@ -59,7 +59,7 @@ class W13Builder
         material.balanceSN = ( parseInt(qty.replace(/\s/g, '')) for qty in row[headers.indexOf("Overdue") + 1..])
 
       if row[mrpIndx] is 'Pur. Order'
-        material.purOrder = ( parseInt(qty.replace(/\s/g, '')) for qty in row[headers.indexOf("Overdue") + 1..])
+        material.purOrder = row[mrpIndx+1]
 
       if row[mrpIndx - 2] is 'Blocked Stock'
         hasBlocked = true
@@ -119,12 +119,10 @@ renderShort = (doc, overdueIndx)->
   header.innerHTML = """
 <th>Material</th>
 <th>Vendor</th>
+<th>Pur. Order</th>
 <th class='negative'>#{doc.weeks[overdueIndx] ? ''}</th>
-<th>PrO</th>
 <th>#{doc.weeks[overdueIndx+1] ? ''}</th>
-<th>PrO</th>
 <th>#{doc.weeks[overdueIndx+2] ? ''}</th>
-<th>PrO</th>
   """
   shortMaterials = (material for material in doc.materials when material.balanceSN[overdueIndx] < 0)
   vendors = []
@@ -146,12 +144,10 @@ filterByVendor = ->
 <tr>
   <td>#{material.name}</td>
   <td>#{material.vendors.join(', ')}</td>
+  <td>#{material.purOrder}</td>
   <td class='negative'>#{material.balanceSN[ovi]}</td>
-  <td>#{material.purOrder[ovi]}</td>
   <td>#{material.balanceSN[ovi+1] ? ''}</td>
-  <td>#{material.purOrder[ovi+1] ? ''}</td>
   <td>#{material.balanceSN[ovi+2] ? ''}</td>
-  <td>#{material.purOrder[ovi+2] ? ''}</td>
 </tr>
 """
   outputTbody.innerHTML = tableRows.join("")
