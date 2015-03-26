@@ -1,14 +1,22 @@
 .drop_zone {
-  border: 2px dashed #bbb;
+  border: 5px dashed #bbb;
   -moz-border-radius: 5px;
   -webkit-border-radius: 5px;
   border-radius: 5px;
   padding: 25px;
   text-align: center;
   font: 20pt bold 'Vollkorn';
-  color: #bbb;
+  color: #747474;
+  background-color: rgba(144, 140, 204, 0.15);
   &.over{
     background-color: rgba(0, 208, 21, 0.22);
+  }
+  &.empty{
+    height: 400px;
+    line-height: 400px;
+  }
+  span{
+    vertical-align: middle;
   }
 }
 .excel-name{

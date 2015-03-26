@@ -8,7 +8,7 @@ var gulp = require('gulp')
     , browserSync = require('browser-sync')
     , reload = browserSync.reload;
 
-gulp.task('browser-sync', function() {
+gulp.task('browser-sync', function () {
     browserSync({
         server: {
             baseDir: "./build"
@@ -30,7 +30,11 @@ gulp.task('less', function () {
 
 
 gulp.task('coffee', function () {
-    gulp.src('./src/coffee/**/*.coffee')
+    gulp.src([
+        './src/coffee/models.coffee',
+        './src/coffee/views.coffee',
+        './src/coffee/app.coffee'
+    ])
         .pipe(concat('app.coffee'))
         .pipe(coffee())
         .pipe(gulp.dest('./build/js'))
@@ -47,20 +51,22 @@ gulp.task('vendor', function () {
     gulp.src([
         'bower_components/bootstrap/dist/css/bootstrap.min.css',
         //'bower_components/bootstrap/dist/css/bootstrap-theme.min.css',
-        'bower_components/fontawesome/css/font-awesome.min.css',
+        'bower_components/fontawesome/css/font-awesome.min.css'
     ])
         .pipe(concat('vendor.css'))
         .pipe(gulp.dest('./build/css'));
 
     gulp.src([
         'bower_components/jquery/dist/jquery.min.js',
+        'bower_components/eventEmitter/EventEmitter.min.js',
         'bower_components/bootstrap/dist/js/bootstrap.min.js',
+        'bower_components/react/react.js'
     ])
         .pipe(concat('vendor.js'))
         .pipe(gulp.dest('./build/js'));
 
     gulp.src([
-        'bower_components/fontawesome/fonts/*.*',
+        'bower_components/fontawesome/fonts/*.*'
     ])
         .pipe(gulp.dest('./build/fonts'));
 });
