@@ -4,36 +4,58 @@
 PuzApp = React.createClass {
   parseW13report: (files)->
     ExcelParser.parse(files[0], (excel)=>
-      doc = W13Builder.build excel
       @setState(
-        doc: doc
+        w13doc: W13Builder.build excel
+        product: null
         isModels: excel.name.toLowerCase().indexOf('models') != -1
         selectedWeek: 0
       ))
 
+  parsePOreport: (files)->
+    ExcelParser.parse(files[0], (excel)=>
+      variable = POBuilder.build excel
+      @setState(
+        podoc: variable
+      ))
+
   changeWeek: (week)->
     @setState(
-      selectedWeek: @state.doc.weeks.indexOf week
+      selectedWeek: week
     )
 
   getInitialState: ->
-    doc: null
+    w13doc: null
+    podoc: null
     isModels: false
     selectedWeek: -1
 
   render: ->
+    dropZones = [
+      div
+        className: 'col-md-' + if @state.isModels or not @state.w13doc then '12' else '6',
+        DropZone {
+          text: 'w13.xls or w13models.xls'
+          onDropFile: @parseW13report
+          className: if @state.w13doc then 'loaded' else 'empty'
+        }
+    ]
+
+    if @state.w13doc and not @state.isModels
+      dropZones.push div
+        className: 'col-md-6',
+        DropZone {
+          text: 'PO.xls'
+          onDropFile: @parsePOreport
+          className: 'loaded' if @state.podoc
+        }
+
     components = [
       div
         className: 'row',
-        div
-          className: 'col-md-12',
-          DropZone {
-            text: 'w13.xls or w13models.xls'
-            onDropFile: @parseW13report
-            className: if @state.doc then 'loaded' else 'empty'
-          }
+        dropZones
     ]
-    if @state.doc?
+
+    if @state.w13doc?
       components.push div
         className: 'row',
         div
@@ -54,25 +76,29 @@ PuzApp = React.createClass {
                 [
                   label {}, 'Week'
                   WeeksList {
-                    weeks: @state.doc?.weeks
+                    weeks: @state.w13doc?.weeks
+                    value: @state.selectedWeek
                     onChange: @changeWeek
                   }
                 ]
       list = if @state.isModels
         MaterialModelsList {
           selectedWeek: @state.selectedWeek
-          doc: @state.doc
+          w13doc: @state.w13doc
         }
       else
         MaterialList {
           selectedWeek: @state.selectedWeek
-          doc: @state.doc
+          w13doc: @state.w13doc
+          podoc: @state.podoc
         }
+
       components.push div
         className: 'row',
         div
           className: 'col-md-12',
           list
+
     div {}, components
 }
 
@@ -106,12 +132,13 @@ DropZone = React.createClass {
 
 WeeksList = React.createClass {
   onChange: ->
-    @props.onChange @getDOMNode().value.trim()
+    @props.onChange parseInt(@getDOMNode().value)
 
   render: ->
-    options = (option({}, week) for week in @props.weeks ? [])
+    options = (option({value: indx}, week) for week,indx in @props.weeks ? [])
     select
       className: 'form-control'
+      value: @props.value
       onChange: @onChange,
       options
 }
@@ -128,7 +155,7 @@ MaterialList = React.createClass {
     @setState(selectedVendor: vendor)
 
   render: ->
-    shortMaterials = (material for material in @props.doc?.materials ? [] when material.balanceSN[@props.selectedWeek] < 0)
+    shortMaterials = (material for material in @props.w13doc?.materials ? [] when material.balanceSN[@props.selectedWeek] < 0)
     vendors = []
     vendors.push vendorName for vendorName in material.vendors when vendors.indexOf(vendorName) == -1 for material in shortMaterials
 
@@ -137,8 +164,9 @@ MaterialList = React.createClass {
       filtered = shortMaterials.filter (r)=>
         r.vendors.indexOf(@state.selectedVendor) isnt -1
 
-    rows = for material in filtered
-      tr {}, [
+    poHeadVendors = []
+    rowsTds = for material in filtered
+      cells = [
         td {}, material.name
         td {}, material.vendors.join(', ')
         td {}, material.purOrder
@@ -147,20 +175,43 @@ MaterialList = React.createClass {
         td {}, material.balanceSN[@props.selectedWeek + 2] ? ''
       ]
 
+      if @props.podoc
+        poMaterial = @props.podoc.materials[material.name]
+        qty = if poMaterial then (poVendor.qty for povName,poVendor of poMaterial.vendors).reduce (v1, v2)-> v1 + v2 else ''
+        if poMaterial
+          poHeadVendors.push povName for povName of poMaterial.vendors when poHeadVendors.indexOf(povName) is -1
+        cells.push td {}, qty
+        cells.push td {}, (if poMaterial then poMaterial.vendors[pohvName]?.qty else '') for pohvName in poHeadVendors
+
+      cells
+
+    rows = for cells in rowsTds
+      maxCellsLength = rowsTds[rowsTds.length - 1].length
+      while cells.length < maxCellsLength
+        cells.push td {}, ''
+      tr {}, cells
+
+    heads = [
+      th {}, 'Material'
+      th {}, VendorsList
+        vendors: vendors
+        value: @state.selectedVendor
+        onChange: @selectVendor
+      th {}, 'Pur. Order'
+      th {className: 'negative'}, @props.w13doc?.weeks[@props.selectedWeek]
+      th {}, @props.w13doc?.weeks[@props.selectedWeek + 1] ? ''
+      th {}, @props.w13doc?.weeks[@props.selectedWeek + 2] ? ''
+    ]
+
+    if @props.podoc?
+      heads.push th {}, 'Total'
+      heads.push th {}, poVendorName for poVendorName in poHeadVendors
+
     table
       className: 'table table-striped table-hover',
       [
         thead {},
-          tr {}, [
-            th {}, 'Material'
-            th {}, VendorsList
-              vendors: vendors
-              onChange: @selectVendor
-            th {}, 'Pur. Order'
-            th {className: 'negative'}, @props.doc?.weeks[@props.selectedWeek]
-            th {}, @props.doc?.weeks[@props.selectedWeek + 1] ? ''
-            th {}, @props.doc?.weeks[@props.selectedWeek + 2] ? ''
-          ]
+          tr {}, heads
         tbody {}, rows
       ]
 }
@@ -171,10 +222,11 @@ VendorsList = React.createClass {
     @props.onChange @getDOMNode().value.trim()
 
   render: ->
-    options = (option({}, vendor) for vendor in @props.vendors)
+    options = (option({value: vendor}, vendor) for vendor in @props.vendors)
     options.unshift(option({}, 'All'))
     select
-      className: 'form-control',
+      className: 'form-control'
+      value: @props.value
       onChange: @onChange,
       options
 
