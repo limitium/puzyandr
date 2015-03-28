@@ -235,7 +235,7 @@ VendorsList = React.createClass {
 
 MaterialModelsList = React.createClass {
   render: ->
-    rows = for material in @props.doc.materials when material.balanceSN[@props.selectedWeek] < 0
+    rows = for material in @props.w13doc.materials when material.balanceSN[@props.selectedWeek] < 0
       short = material.balanceSN[@props.selectedWeek]
 
       productForReduce = (name: product.name, qty: product.qty[@props.selectedWeek] for product in material.blocked when product.qty[@props.selectedWeek] > 0)
@@ -273,7 +273,7 @@ MaterialModelsList = React.createClass {
             th {}, 'Product'
             th {}, 'Forecast'
             th {}, 'Result'
-            th {className: 'negative'}, @props.doc?.weeks[@props.selectedWeek]
+            th {className: 'negative'}, @props.w13doc?.weeks[@props.selectedWeek]
           ]
         tbody {}, rows
       ]

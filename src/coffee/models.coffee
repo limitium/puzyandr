@@ -51,8 +51,8 @@ class W13Builder
     hasBlocked = false
     for row in excel.rows[5...]
       if row[mrpIndx] is 'Requirements'
-        materials.push material if material
         material = new W13Material row[2].trim()
+        materials.push material
         skipVendorDescription = false
         hasBlocked = false
         vendorsEnd = false
