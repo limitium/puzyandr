@@ -1,4 +1,7 @@
+SamsApp = require './views/SamsApp.coffee'
+React = require 'react'
+
 React.render(
-  PuzApp(),
+  SamsApp(),
   document.getElementById('app')
 )

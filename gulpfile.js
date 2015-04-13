@@ -5,6 +5,7 @@ var gulp = require('gulp')
     , gutil = require('gulp-util')
     , plumber = require('gulp-plumber')
     , concat = require('gulp-concat')
+    , webpack = require("gulp-webpack")
     , browserSync = require('browser-sync')
     , reload = browserSync.reload;
 
@@ -28,6 +29,35 @@ gulp.task('less', function () {
         .pipe(reload({stream: true}));
 });
 
+
+gulp.task("webpack", function () {
+    return gulp.src('src/app.coffee')
+        .pipe(webpack({
+// webpack options
+            entry: "./src/coffee/app.coffee",
+            output: {
+                filename: "./js/bundle.js"
+            },
+            resolve: {
+                modulesDirectories: ["node_modules"]
+            },
+            stats: {
+                // Configure the console output
+                colors: true,
+                modules: true,
+                reasons: true
+            },
+            failOnError: true,
+            module: {
+                loaders: [
+                    {test: /\.coffee$/, loader: "coffee-loader"},
+                    {test: /\.(coffee\.md|litcoffee)$/, loader: "coffee-loader?literate"}
+                ]
+            },
+            devtool: 'inline-source-map'
+        }))
+        .pipe(gulp.dest('build/'));
+});
 
 gulp.task('coffee', function () {
     gulp.src([
@@ -72,9 +102,9 @@ gulp.task('vendor', function () {
 });
 
 gulp.task('all:watch', function () {
-    gulp.watch(['./src/coffee/**/*.coffee'], ['coffee']);
+    gulp.watch(['./src/coffee/**/*.coffee'], ['webpack']);
     gulp.watch(['./src/less/**/*.less'], ['less']);
     gulp.watch(['./src/*.html'], ['html']);
 });
 
-gulp.task('default', ['vendor', 'less', 'coffee', 'html', 'browser-sync', 'all:watch']);
+gulp.task('default', ['vendor', 'less', 'webpack', 'html', 'browser-sync', 'all:watch']);

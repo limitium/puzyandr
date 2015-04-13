@@ -1,33 +1,6 @@
-class ExcelParser
-  @parse: (file, cb)->
-    reader = new FileReader
-    reader.onload = (e) =>
-      cb @excelToJSON(escape(file.name), e.target.result)
-    reader.readAsText file
-
-  @excelToJSON: (name, excelText)->
-    rows = [];
-    rowsString = excelText.split "\n"
-    for rowString in rowsString
-      rows.push(rowString.split "\t")
-
-    name: name
-    rows: rows
-
-class W13Doc
-  weeks: []
-  materials: []
-
-class W13Material
-  constructor: (@name)->
-    @vendors = []
-    @blocked = []
-    @balanceSN = []
-    @purOrder = null
-
-
-class W13Product
-  constructor: (@name, @qty)->
+W13Doc = require '../models/W13Doc.coffee'
+W13Product = require '../models/W13Product.coffee'
+W13Material = require '../models/W13Material.coffee'
 
 class W13Builder
   @build: (excel)->
@@ -82,40 +55,4 @@ class W13Builder
 
     materials
 
-
-class POVendor
-  constructor: (@name)->
-    @qty = 0
-
-
-class POMaterial
-  constructor: (@name)->
-    @vendors = {}
-
-  getVendor: (name)->
-    if @vendors[name]?
-      @vendors[name]
-    else
-      vendor = new POVendor(name)
-      @vendors[name] = vendor
-      vendor
-
-
-class PODoc
-  constructor: ->
-    @materials= {}
-
-  getMaterial: (name)->
-    if @materials[name]?
-      @materials[name]
-    else
-      material = new POMaterial(name)
-      @materials[name] = material
-      material
-
-
-class POBuilder
-  @build: (excel)->
-    doc = new PODoc
-    doc.getMaterial(row[1].trim()).getVendor(row[4].trim()).qty += parseInt(row[25].replace(/\s/g, '')) for row in excel.rows[6..] when row[25]?
-    doc
+module.exports = W13Builder
