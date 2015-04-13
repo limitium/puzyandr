@@ -56,7 +56,8 @@ gulp.task("webpack", function () {
             },
             devtool: 'inline-source-map'
         }))
-        .pipe(gulp.dest('build/'));
+        .pipe(gulp.dest('build/'))
+        .pipe(reload({stream: true}));
 });
 
 gulp.task('coffee', function () {

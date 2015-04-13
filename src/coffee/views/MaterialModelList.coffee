@@ -20,6 +20,7 @@ MaterialModelsList = React.createClass {
           short = 0
         tr {}, [
           td {}, ''
+          td {}, ''
           td {}, product.name
           td {}, product.qty
           td {}, qtyCanMade
@@ -27,6 +28,7 @@ MaterialModelsList = React.createClass {
         ]
       productsRows.unshift tr {className: 'negative' if short < 0}, [
         td {}, material.name
+        td {}, material.vendors.join(', ')
         td {}, ''
         td {}, ''
         td {}, short
@@ -40,6 +42,7 @@ MaterialModelsList = React.createClass {
         thead {},
           tr {}, [
             th {}, 'Material'
+            th {}, 'Vendors'
             th {}, 'Product'
             th {}, 'Forecast'
             th {}, 'Result'
