@@ -16,6 +16,7 @@ class W13Builder
   @buildMaterials = (excel)->
     headers = excel.rows[3]
     mrpIndx = headers.indexOf "MRP Elemen"
+    mrpIndx = headers.indexOf "MRP Element" if mrpIndx is -1
     materials = []
 
     material = null
